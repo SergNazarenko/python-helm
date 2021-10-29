@@ -1,0 +1,50 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{ .name }}
+  labels:
+    app: {{ .Values.app }}
+spec:
+  startingDeadlineSeconds: {{ .Values.startingDeadlineSeconds}}
+  concurrencyPolicy: {{ .Values.concurrencyPolicy}}
+  schedule: {{ $.Values.schedule}}
+  successfulJobsHistoryLimit: {{ .Values.successfulJobsHistoryLimit}}
+  failedJobsHistoryLimit: {{ .Values.failedJobsHistoryLimit}}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          annotations:
+            vault.security.banzaicloud.io/vault-addr: "http://10.157.0.109:8200"
+            vault.security.banzaicloud.io/vault-agent: "true"
+            vault.security.banzaicloud.io/vault-auth-method: kubernetes
+            vault.security.banzaicloud.io/vault-role: vault-auth
+            vault.security.banzaicloud.io/vault-skip-verify: "true"
+        spec:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: cloud.google.com/gke-nodepool
+                    operator: In
+                    values:
+                    - nated-pool
+          imagePullSecrets:
+          - name: dockerhub
+          containers:
+          - name: {{ .name }}
+            image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
+            securityContext:
+              allowPrivilegeEscalation: false
+              runAsUser: 0
+            imagePullPolicy: IfNotPresent
+            resources:
+              requests:
+                cpu: {{ $.Values.resources.requests.cpu }}
+                memory: {{ $.Values.resources.requests.memory }}
+              limits:
+                cpu: {{ $.Values.resources.limits.cpu }}
+                memory: {{ $.Values.resources.limits.memory }}
+          restartPolicy:  Never
+            
